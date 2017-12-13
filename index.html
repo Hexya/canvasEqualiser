@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width">
+    <link rel="stylesheet" href="main.css">
+    <title>decodeAudioData example</title>
+
+    <link rel="stylesheet" href="">
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="txt-content">
+      <div class="play-txt1">
+        <p class="s1">S</p>
+        <p class="s2">u</p>
+        <p class="s3">m</p>
+        <p class="s4">m</p>
+        <p class="s5">e</p>
+        <p class="s6">r</p>
+      </div>
+      <div class="play-txt2">
+        <p class="g1">s</p>
+        <p class="g2">o</p>
+        <p class="g3">n</p>
+        <p class="g4">g</p>
+        <p class="g5">s</p>
+      </div>
+      <!-- <p class="play-txt2">for good vibes</p> -->
+    </div>
+    <button type="button" class="play" name="button" style="display:none">►</button>
+    <button type="button" class="full" name="button">
+      <img class="full-img" src="img/full-screen.png" alt="full-screen">
+    </button>
+    <input class="volume" type="range" min="0" max="100" value="">
+    <canvas></canvas>
+    <div class="circle"></div>
+    <button class="btnA btnW" type="button" name="button"></button>
+    <button class="btnB btnW" type="button" name="button"></button>
+    <button class="btnC btnW" type="button" name="button"></button>
+      <img class="wall wallA" src="img/a.jpeg" alt="flower">
+      <img class="wall wallB" src="img/b.jpeg" alt="flower">
+      <img class="wall wallC" src="img/c.jpeg" alt="flower">
+  </body>
+  <script>
+
+  var canvas = document.body.querySelector('canvas');
+  var ctx = canvas.getContext('2d') // context 2d  ou webGl
+  var context = new (window.AudioContext || window.webkitAudioContext)(); // Création de l'instance
+  var analyser = context.createAnalyser();
+  var frequencyData = new Uint8Array(this.analyser.frequencyBinCount);
+  var frequencyDataLength = frequencyData.length-400;// - aigue
+  var width, height, rectWidth = null;
+  var soundBuffer = null;
+  var url = "sound.mp3";
+  var gainNode = context.createGain();
+
+  //SUCCESS
+  function onSuccess(buffer) {
+    soundBuffer = buffer;
+
+    var play = document.querySelector('.play');
+    play.style.display = 'block';
+    play.addEventListener('click', onPlayClick);
+  }
+  //ERROR
+  function onError() {
+    console.error('Une erreur est survenue lors du decodage du son');
+  }
+  //ONLOAD SOUND
+  function onLoadSound(data) {
+    console.log(data);
+    context.decodeAudioData(data, onSuccess, onError);
+  }
+  //CONNEXION enceinte & analyser
+  function onPlayClick() {
+    var source = context.createBufferSource(); // creates a sound source
+    var play = document.querySelector('.play');
+    var txt = document.querySelector('.txt-content');
+    source.buffer = soundBuffer; // source a jouer
+    if(play.id == ""){
+      source.connect(gainNode); //Connexion au enceinte
+      gainNode.gain.value = 1;
+      gainNode.connect(context.destination); //Connexion au enceinte
+      play.id = "activated";
+      play.innerHTML = "I I";
+      txt.style.display = 'block';
+    } else {
+      gainNode.gain.value = 0;
+      gainNode.disconnect(context.destination);//Deco
+      play.id = "";
+      play.innerHTML = "►";
+    }
+    source.connect(analyser); // relier a l'analyser sur une autre branche
+    source.start(0);
+
+    // VOLUME
+    function volume() {
+    var volume = document.querySelector('.volume').value;
+    gainNode.gain.value = volume;
+  };
+    volume();
+    update();
+  }
+  //LOAD SOUND
+  function loadSound(url, callback) {
+    var request = new XMLHttpRequest();
+    request.open('GET', url, true);
+    request.responseType = 'arraybuffer';
+
+    request.onload = function() {
+      callback(request.response)
+    }
+    request.send();
+  }
+  //TCHEQUE VAR RESIZE
+  function handleResize() {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width;
+    canvas.height = height;
+    rectWidth = width / frequencyDataLength;
+  }
+  //UPDATE
+  function update() {
+    analyser.getByteFrequencyData(frequencyData);
+    draw()
+
+    requestAnimationFrame(update);
+  }
+
+  // CREATION BARRE
+  function draw() {
+    ctx.clearRect(0, 0, width, height);//clear du canvas
+    //var gradient = ctx.createLinearGradient(0,0,width,0); //LINEAR gradient
+    var gradient = ctx.createRadialGradient(width/2,height/2,5,width/2,height/2,600); //LINEAR gradient
+    gradient.addColorStop("0","transparent");
+    gradient.addColorStop("0.244","transparent");
+    gradient.addColorStop("0.245","cyan");
+    gradient.addColorStop("0.5","blue");
+    gradient.addColorStop("0.8","red");
+    ctx.strokeStyle=gradient;
+    // ctx.lineWidth=5;
+    for (var i = 0; i < frequencyDataLength; i++) {
+      var angle = (Math.PI * 2) / frequencyDataLength * i;
+      var rayon =150;//2 taille rayon
+      var farRayon = frequencyData[i] * 2.3;//3 taille farRayon
+      //var tryr = farRayon + 500; // pointiller
+      ctx.beginPath();
+      // ctx.moveTo(width/2, height/2); //1 MIDLE
+      // ctx.moveTo(rayon*Math.cos(angle),rayon*Math.sin(angle)); // angle
+      ctx.moveTo(width/2+rayon*Math.cos(angle),height/2+rayon*Math.sin(angle))//midle + angle
+      ctx.lineTo(width/2+farRayon*Math.cos(angle),height/2+farRayon*Math.sin(angle)); //
+      ctx.stroke();
+    }
+  }
+
+  window.addEventListener('resize', handleResize);
+  handleResize();
+  loadSound(url, onLoadSound);
+
+  </script>
+  <script type="text/javascript" src="fullScreen.js"></script>
+  <script type="text/javascript" src="wall.js"></script>
+</html>
